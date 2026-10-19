@@ -28,6 +28,11 @@ struct LoginView: View {
                     reduceMotion: reduceMotion
                 )
 
+                JaawVideoBackdrop(
+                    resource: JaawEntryVideo.login,
+                    reduceMotion: reduceMotion
+                )
+
                 ScrollView {
                     VStack(spacing: 0) {
                         backButton
@@ -61,7 +66,7 @@ struct LoginView: View {
         }
     }
 
-    // MARK: - Back (`.back`)
+    // MARK: - Back
 
     private var backButton: some View {
         HStack {
@@ -81,7 +86,7 @@ struct LoginView: View {
         .padding(.top, 8)
     }
 
-    // MARK: - Header (`.head`)
+    // MARK: - Header
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -107,61 +112,90 @@ struct LoginView: View {
         .accessibilityElement(children: .combine)
     }
 
-    // MARK: - Form panel (`.panel`)
+    // MARK: - Form panel
 
     private var formPanel: some View {
-        GlassPanel(cornerRadius: 34) {
+        GlassPanel(cornerRadius: 26) {
             VStack(alignment: .leading, spacing: 0) {
                 fieldLabel("NetID")
                 netIDField
                 fieldLabel("Password")
                     .padding(.top, 16)
                 passwordField
+
+                if let error = viewModel.errorMessage {
+                    Text(error)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color(red: 1, green: 0.72, blue: 0.72))
+                        .padding(.leading, 4)
+                        .padding(.top, 12)
+                        .accessibilityLabel("Login error: \(error)")
+                }
+
+                if viewModel.isLoggingIn {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                            .tint(.white)
+                        Text("Contacting Academia…")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.white.opacity(0.7))
+                    }
+                    .padding(.leading, 4)
+                    .padding(.top, 12)
+                }
             }
             .padding(20)
         }
     }
 
+    /// Native-feeling field chrome: a neutral fill, hairline border and a
+    /// clear focus ring — no colour cast over the backdrop.
+    private func fieldBackground(focused: Bool) -> some View {
+        RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .fill(focused ? JaawColors.fieldFillFocused : JaawColors.fieldFill)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(focused ? JaawColors.fieldBorderFocused : JaawColors.fieldBorder, lineWidth: 1)
+            )
+    }
+
     private func fieldLabel(_ text: String) -> some View {
         Text(text)
             .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(Color(red: 235 / 255, green: 239 / 255, blue: 1, opacity: 0.85))
+            .foregroundStyle(.white.opacity(0.6))
             .padding(.leading, 4)
             .padding(.bottom, 8)
     }
 
     private var netIDField: some View {
         HStack(spacing: 2) {
-            TextField("ab1234", text: $viewModel.netID)
-                .font(.system(size: 17, weight: .medium))
-                .foregroundStyle(.white)
-                .tint(.white)
-                .focused($focusedField, equals: .netID)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .textContentType(.username)
-                .submitLabel(.next)
-                .onSubmit { focusedField = .password }
-                .accessibilityLabel("NetID")
+            TextField(
+                "",
+                text: $viewModel.netID,
+                prompt: Text("ab1234").foregroundStyle(JaawColors.fieldPlaceholder)
+            )
+            .font(.system(size: 17, weight: .medium))
+            .foregroundStyle(.white)
+            .tint(.white)
+            .focused($focusedField, equals: .netID)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .textContentType(.username)
+            .submitLabel(.next)
+            .onSubmit { focusedField = .password }
+            .accessibilityLabel("NetID")
 
             Text("@srmist.edu.in")
                 .font(.system(size: 17, weight: .medium))
-                .foregroundStyle(JaawColors.ice.opacity(0.62))
+                .foregroundStyle(.white.opacity(0.45))
                 .lineLimit(1)
                 .layoutPriority(1)
                 .accessibilityHidden(true)
         }
-        .padding(.leading, 18)
-        .padding(.trailing, 14)
-        .frame(height: 58)
-        .background(
-            RoundedRectangle(cornerRadius: 19, style: .continuous)
-                .fill(focusedField == .netID ? JaawColors.fieldFillFocused : JaawColors.fieldFill)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 19, style: .continuous)
-                .strokeBorder(.white.opacity(focusedField == .netID ? 0.75 : 0.2), lineWidth: 1)
-        )
+        .padding(.leading, 16)
+        .padding(.trailing, 16)
+        .frame(height: 56)
+        .background(fieldBackground(focused: focusedField == .netID))
         .animation(.easeOut(duration: 0.2), value: focusedField)
     }
 
@@ -169,9 +203,17 @@ struct LoginView: View {
         HStack(spacing: 0) {
             Group {
                 if viewModel.isPasswordVisible {
-                    TextField("Your password", text: $viewModel.password)
+                    TextField(
+                        "",
+                        text: $viewModel.password,
+                        prompt: Text("Your password").foregroundStyle(JaawColors.fieldPlaceholder)
+                    )
                 } else {
-                    SecureField("Your password", text: $viewModel.password)
+                    SecureField(
+                        "",
+                        text: $viewModel.password,
+                        prompt: Text("Your password").foregroundStyle(JaawColors.fieldPlaceholder)
+                    )
                 }
             }
             .font(.system(size: 17, weight: .medium))
@@ -188,21 +230,14 @@ struct LoginView: View {
             } label: {
                 Image(systemName: viewModel.isPasswordVisible ? "eye.slash" : "eye")
                     .font(.system(size: 17))
-                    .foregroundStyle(viewModel.isPasswordVisible ? .white : JaawColors.ice.opacity(0.75))
-                    .frame(width: 52, height: 58)
+                    .foregroundStyle(viewModel.isPasswordVisible ? .white : .white.opacity(0.55))
+                    .frame(width: 52, height: 56)
             }
             .accessibilityLabel(viewModel.isPasswordVisible ? "Hide password" : "Show password")
         }
-        .padding(.leading, 18)
-        .frame(height: 58)
-        .background(
-            RoundedRectangle(cornerRadius: 19, style: .continuous)
-                .fill(focusedField == .password ? JaawColors.fieldFillFocused : JaawColors.fieldFill)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 19, style: .continuous)
-                .strokeBorder(.white.opacity(focusedField == .password ? 0.75 : 0.2), lineWidth: 1)
-        )
+        .padding(.leading, 16)
+        .frame(height: 56)
+        .background(fieldBackground(focused: focusedField == .password))
         .animation(.easeOut(duration: 0.2), value: focusedField)
     }
 

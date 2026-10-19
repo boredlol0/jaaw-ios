@@ -12,8 +12,13 @@ enum JaawColors {
     static let cloudBright = Color(hex: 0xB9C3FF)
     static let ice = Color(hex: 0xD6DDFF)
     static let muted = Color(red: 222 / 255, green: 228 / 255, blue: 1, opacity: 0.8)
-    static let fieldFill = Color(red: 4 / 255, green: 5 / 255, blue: 70 / 255, opacity: 0.34)
-    static let fieldFillFocused = Color(red: 4 / 255, green: 5 / 255, blue: 70 / 255, opacity: 0.5)
+    /// Neutral field chrome — a whisper of white over the backdrop rather than
+    /// a blue tint, so the controls read as native on any background.
+    static let fieldFill = Color.white.opacity(0.06)
+    static let fieldFillFocused = Color.white.opacity(0.11)
+    static let fieldBorder = Color.white.opacity(0.12)
+    static let fieldBorderFocused = Color.white.opacity(0.5)
+    static let fieldPlaceholder = Color.white.opacity(0.35)
     static let scrim = Color(red: 5 / 255, green: 6 / 255, blue: 60 / 255)
     static let scrimDeep = Color(red: 4 / 255, green: 5 / 255, blue: 44 / 255)
     static let ctaTint = Color(hex: 0x0C0EC9)
@@ -190,39 +195,13 @@ struct GlassPanel<Content: View>: View {
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(.ultraThinMaterial)
-                    .opacity(0.55)
-            )
-            .background(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [.white.opacity(0.26), .white.opacity(0.07)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .environment(\.colorScheme, .dark)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(.white.opacity(0.28), lineWidth: 1)
+                    .strokeBorder(.white.opacity(0.12), lineWidth: 1)
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: [.white.opacity(0.35), .clear],
-                            startPoint: .top,
-                            endPoint: .center
-                        ),
-                        lineWidth: 1
-                    )
-                    .mask(
-                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                            .frame(height: 27)
-                            .frame(maxHeight: .infinity, alignment: .top)
-                    )
-            )
-            .shadow(color: Color(red: 0, green: 0, blue: 60 / 255, opacity: 0.6), radius: 40, y: 18)
+            .shadow(color: .black.opacity(0.35), radius: 24, y: 12)
     }
 }
 

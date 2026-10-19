@@ -9,6 +9,10 @@ import SwiftUI
 
 @main
 struct jaaw_iosApp: App {
+    init() {
+        JaawFonts.registerBundledFonts()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

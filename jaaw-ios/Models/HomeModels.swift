@@ -1,9 +1,9 @@
 import Foundation
 
 // MARK: - Home dashboard models
-// Demo content used until the API lands. The view model serves
-// `HomeDashboard.demo` today; swap the source for the API layer later
-// without touching views.
+// `HomeDashboard.demo` is preview/sample content only. At runtime the view
+// model builds the dashboard from the persisted API payload via
+// `HomeDashboardFactory` without touching views.
 
 struct ClassEntry: Identifiable, Hashable {
     enum Status: Hashable {
@@ -36,6 +36,8 @@ struct HomeDashboard {
     var userInitial: String    // "T"
     var dayOrderLabel: String  // "Day\norder"
     var dayOrderNumber: String // "3"
+    /// No class order today (holiday / weekend / non-numeric day order).
+    var isHoliday: Bool = false
     var classCountLine: String // "5 classes"
     var nextUpLine: String     // "Next at 11:35"
     var tiles: [StatTile]

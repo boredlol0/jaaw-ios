@@ -3,6 +3,7 @@ import SwiftUI
 /// Home dashboard: greeting, day-order hero, stat tiles and today's timeline.
 struct HomeView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var session = SessionStore.shared
     @State private var viewModel = HomeViewModel()
     @State private var appeared = false
     @State private var drift = false
@@ -29,6 +30,7 @@ struct HomeView: View {
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
             appeared = true
+            viewModel.reload()
             guard !reduceMotion else { return }
             drift = true
         }
@@ -38,74 +40,179 @@ struct HomeView: View {
 
     private var greetingRow: some View {
         let dashboard = viewModel.dashboard
-        return HStack {
-            Text(dashboard.dateLine)
-                .font(.system(size: 15))
-                .foregroundStyle(HomeColors.secondaryText)
+        return HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(greetingLine)
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Text(dashboard.dateLine)
+                    .font(.system(size: 13))
+                    .foregroundStyle(HomeColors.secondaryText)
+            }
             Spacer(minLength: 0)
-            Text(dashboard.userInitial)
-                .font(.system(size: 16, weight: .heavy))
-                .foregroundStyle(.white)
-                .frame(width: 38, height: 38)
-                .background(HomeColors.avatarFill, in: Circle())
-                .overlay(Circle().strokeBorder(HomeColors.avatarBorder, lineWidth: 1))
-                .accessibilityHidden(true)
+            Menu {
+                if !session.profile.name.isEmpty {
+                    Section {
+                        Text(session.profile.name)
+                        if !session.profile.registrationNumber.isEmpty {
+                            Text(session.profile.registrationNumber)
+                        }
+                    }
+                }
+                Button("Logout", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {
+                    session.logout()
+                }
+            } label: {
+                Text(dashboard.userInitial)
+                    .font(.system(size: 16, weight: .heavy))
+                    .foregroundStyle(.white)
+                    .frame(width: 42, height: 42)
+                    .background(HomeColors.avatarFill, in: Circle())
+                    .overlay(Circle().strokeBorder(HomeColors.avatarBorder, lineWidth: 1))
+                    .shadow(color: .black.opacity(0.35), radius: 12, y: 6)
+            }
+            .accessibilityLabel("Profile menu")
         }
         .padding(.horizontal, 6)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(dashboard.dateLine)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(greetingLine). \(dashboard.dateLine)")
+    }
+
+    /// "Good evening, Toshith" when a name is known, else just the greeting.
+    private var greetingLine: String {
+        let first = session.profile.name.split(separator: " ").first.map(String.init) ?? ""
+        return first.isEmpty ? timeOfDayGreeting : "\(timeOfDayGreeting), \(first)"
+    }
+
+    private var timeOfDayGreeting: String {
+        switch Calendar.current.component(.hour, from: Date()) {
+        case 5..<12: return "Good morning"
+        case 12..<17: return "Good afternoon"
+        case 17..<22: return "Good evening"
+        default: return "Hello"
+        }
     }
 
     // MARK: - Day hero
 
     private var dayHero: some View {
         let dashboard = viewModel.dashboard
-        return HStack(alignment: .bottom, spacing: 14) {
-            Text(dashboard.dayOrderLabel)
-                .font(.system(size: 26, weight: .medium))
-                .tracking(-0.8)
-                .foregroundStyle(HomeColors.secondaryText)
-                .padding(.bottom, 16)
-            Text(dashboard.dayOrderNumber)
-                .font(.system(size: 140, weight: .heavy))
-//                .tracking(-11)
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-                .minimumScaleFactor(0.6)
-                .padding(.trailing, 12)
-                .foregroundStyle(.white)
-                .shadow(color: HomeColors.glowPrimary.opacity(0.55), radius: 60, y: 10)
-                .accessibilityLabel("Day order \(dashboard.dayOrderNumber)")
-            Spacer(minLength: 0)
-            VStack(alignment: .trailing, spacing: 4) {
-                Text(dashboard.classCountLine)
-                    .font(.system(size: 14))
-                    .foregroundStyle(HomeColors.secondaryText)
-                Text(dashboard.nextUpLine)
-                    .font(.system(size: 20, weight: .heavy))
-                    .tracking(1)
-                    .foregroundStyle(.white)
+        return heroBody(dashboard)
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(heroGradient)
+                    .overlay {
+                        // Glow anchored to the top-trailing corner and drawn
+                        // in-bounds, so its falloff decreases smoothly from the
+                        // corner to zero. The previous overflowing blob was
+                        // centred *inside* the card, so the rounded clip sliced
+                        // it along the top/right edges — an obvious cut on the
+                        // shorter holiday card.
+                        RadialGradient(
+                            colors: [HomeColors.glowPrimary.opacity(0.36), .clear],
+                            center: .topTrailing,
+                            startRadius: 0,
+                            endRadius: 300
+                        )
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
             }
-            .padding(.bottom, 14)
+            .overlay(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .strokeBorder(HomeColors.nowBorder, lineWidth: 1)
+            )
+            .shadow(color: HomeColors.glowPrimary.opacity(0.32), radius: 30, y: 14)
+            .padding(.top, 18)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(
+                dashboard.isHoliday
+                    ? "Holiday. No classes today."
+                    : "Day order \(dashboard.dayOrderNumber). \(dashboard.classCountLine). \(dashboard.nextUpLine)."
+            )
+    }
+
+    @ViewBuilder
+    private func heroBody(_ dashboard: HomeDashboard) -> some View {
+        if dashboard.isHoliday {
+            // No class order today: a Caveat scribble instead of the day
+            // number (which would otherwise be a meaningless blank glyph).
+            VStack(spacing: 2) {
+                Text("Holiday! ")
+                    .font(JaawFonts.script(62))
+                    .foregroundStyle(.white)
+                    .shadow(color: HomeColors.glowPrimary.opacity(0.55), radius: 44, y: 8)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 8)
+                Text("no classes")
+                    .font(JaawFonts.script(28))
+                    .foregroundStyle(HomeColors.secondaryText)
+            }
+            // Room for Caveat's flourishes, which overhang the line box.
+            .padding(.horizontal, 10)
+            .padding(.top, 24)
+            .padding(.bottom, 30)
+            .frame(maxWidth: .infinity)
+        } else {
+            HStack(alignment: .bottom, spacing: 14) {
+                VStack(alignment: .leading, spacing: -10) {
+                    Text(dashboard.dayOrderLabel.replacingOccurrences(of: "\n", with: " "))
+                        .font(.system(size: 11, weight: .heavy))
+                        .tracking(1.8)
+                        .textCase(.uppercase)
+                        .foregroundStyle(HomeColors.tileEyebrow)
+                    Text(dashboard.dayOrderNumber)
+                        .font(.system(size: 112, weight: .heavy))
+                        .tracking(-6)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .foregroundStyle(.white)
+                        .shadow(color: HomeColors.glowPrimary.opacity(0.55), radius: 50, y: 10)
+                }
+                Spacer(minLength: 0)
+                VStack(alignment: .trailing, spacing: 8) {
+                    Text(dashboard.nextUpLine)
+                        .font(.system(size: 18, weight: .heavy))
+                        .tracking(0.6)
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.trailing)
+                    Text(dashboard.classCountLine)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(HomeColors.secondaryText)
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 5)
+                        .background(Color.white.opacity(0.08), in: Capsule())
+                        .overlay(Capsule().strokeBorder(HomeColors.cardBorder, lineWidth: 1))
+                }
+                .padding(.bottom, 10)
+            }
         }
-        .padding(.horizontal, 6)
-        .padding(.top, 14)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Day order \(dashboard.dayOrderNumber). \(dashboard.classCountLine). \(dashboard.nextUpLine).")
+    }
+
+    private var heroGradient: LinearGradient {
+        LinearGradient(
+            colors: [Color(hex: 0x181A2C), Color(hex: 0x0C0D15)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
     }
 
     // MARK: - Stat tiles
 
     private var statTiles: some View {
         LazyVGrid(
-            columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
-            spacing: 12
+            columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)],
+            spacing: 14
         ) {
             ForEach(viewModel.dashboard.tiles, id: \.title) { tile in
                 StatTileCard(tile: tile, animated: appeared, reduceMotion: reduceMotion)
             }
         }
-        .padding(.top, 22)
+        .padding(.top, 24)
     }
 
     // MARK: - Section header
@@ -124,19 +231,47 @@ struct HomeView: View {
                 .foregroundStyle(HomeColors.faintText)
         }
         .padding(.horizontal, 6)
-        .padding(.top, 30)
-        .padding(.bottom, 12)
+        .padding(.top, 34)
+        .padding(.bottom, 14)
         .accessibilityElement(children: .combine)
     }
 
     // MARK: - Class timeline
 
     private var classList: some View {
-        VStack(spacing: 10) {
-            ForEach(viewModel.dashboard.classes) { entry in
-                ClassRow(entry: entry, animated: appeared, reduceMotion: reduceMotion)
+        VStack(spacing: 0) {
+            if viewModel.dashboard.classes.isEmpty {
+                emptyTodayCard
+            } else {
+                ForEach(viewModel.dashboard.classes) { entry in
+                    ClassRow(entry: entry, animated: appeared, reduceMotion: reduceMotion)
+                }
             }
         }
+    }
+
+    /// Scribble card shown when there is nothing on today.
+    private var emptyTodayCard: some View {
+        let dashboard = viewModel.dashboard
+        return VStack(spacing: 4) {
+            Text("nothing on today, enjoy! ")
+                .font(JaawFonts.script(32))
+                .foregroundStyle(HomeColors.tileEyebrow)
+            Text(dashboard.isHoliday ? "No class order for today." : "No classes today.")
+                .font(.system(size: 13))
+                .foregroundStyle(HomeColors.secondaryText)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 34)
+        .padding(.horizontal, 20)
+        .background(HomeColors.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(HomeColors.cardBorder, lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.35), radius: 18, y: 8)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(dashboard.isHoliday ? "No class order for today." : "No classes today.")
     }
 }
 
@@ -244,6 +379,8 @@ private struct StatTileCard: View {
             Text(tile.title)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(HomeColors.tileEyebrow)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
             StatRing(
                 fraction: tile.fraction,
                 label: tile.percentLabel,
@@ -251,19 +388,20 @@ private struct StatTileCard: View {
                 animated: animated,
                 reduceMotion: reduceMotion
             )
-            .padding(.vertical, 12)
+            .padding(.vertical, 14)
             Text(caption)
                 .font(.system(size: 12.5))
-                .lineSpacing(1)
+                .lineSpacing(1.5)
                 .foregroundStyle(HomeColors.secondaryText)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, minHeight: 176, alignment: .leading)
-        .background(HomeColors.card, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .padding(18)
+        .frame(maxWidth: .infinity, minHeight: 186, alignment: .leading)
+        .background(HomeColors.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .strokeBorder(HomeColors.cardBorder, lineWidth: 1)
         )
+        .shadow(color: .black.opacity(0.35), radius: 18, y: 8)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(tile.title) \(tile.percentLabel). \(tile.captionLeading)\(tile.captionBold)\(tile.captionTrailing)")
     }
@@ -299,11 +437,11 @@ private struct StatRing: View {
                     value: animated
                 )
             Text(label)
-                .font(.system(size: 22, weight: .heavy))
+                .font(.system(size: 23, weight: .heavy))
                 .tracking(-0.9)
                 .foregroundStyle(.white)
         }
-        .frame(width: 84, height: 84)
+        .frame(width: 92, height: 92)
         .accessibilityValue(label)
     }
 }
@@ -316,23 +454,47 @@ private struct ClassRow: View {
     var reduceMotion: Bool
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            VStack(alignment: .trailing, spacing: 3) {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .trailing, spacing: 4) {
                 Text(entry.time)
                     .font(.system(size: 15, weight: .semibold))
                 Text(entry.period)
-                    .font(.system(size: 11.5))
+                    .font(.system(size: 11.5, weight: .medium))
                     .foregroundStyle(HomeColors.secondaryText)
             }
-            .frame(width: 52, alignment: .trailing)
-            .padding(.top, 16)
+            .frame(width: 58, alignment: .trailing)
+            .padding(.top, 28)
             .foregroundStyle(HomeColors.timeText)
 
+            railDot
+
             ClassCard(entry: entry, animated: animated, reduceMotion: reduceMotion)
+                .padding(.vertical, 10)
         }
+        .background(alignment: .leading) { railLine }
         .opacity(isDone ? 0.55 : 1)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(entry.time) \(entry.period), \(entry.title), \(entry.detail)\(statusSuffix)")
+    }
+
+    /// Continuous timeline rail, shared with the Timetable tab. The line is a
+    /// row background so it always spans the full row height (a `maxHeight`
+    /// frame can't stretch inside a `ScrollView`).
+    private var railLine: some View {
+        Rectangle()
+            .fill(Color.white.opacity(0.10))
+            .frame(width: 2)
+            .padding(.leading, 76)
+    }
+
+    private var railDot: some View {
+        Circle()
+            .fill(isDone ? Color.white.opacity(0.20) : Color.white.opacity(0.30))
+            .frame(width: 10, height: 10)
+            .overlay(Circle().strokeBorder(HomeColors.page, lineWidth: 3))
+            .padding(.top, 32)
+            .frame(width: 14)
+            .accessibilityHidden(true)
     }
 
     private var isDone: Bool {
@@ -357,12 +519,14 @@ private struct ClassCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: 8) {
-                VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(entry.title)
                         .font(.system(size: 18, weight: .heavy))
                         .tracking(-0.45)
                         .strikethrough(isDone, color: .white.opacity(0.5))
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text(entry.detail)
                         .font(.system(size: 13))
                         .foregroundStyle(isNow ? HomeColors.nowDetail : HomeColors.secondaryText)
@@ -391,18 +555,18 @@ private struct ClassCard: View {
                 .accessibilityValue("\(Int(progress * 100)) percent elapsed")
             }
         }
-        .padding(15)
-        .padding(.horizontal, 1)
+        .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .foregroundStyle(.white)
         .background {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(isNow ? AnyShapeStyle(nowGradient) : AnyShapeStyle(HomeColors.card))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
                         .strokeBorder(isNow ? HomeColors.nowBorder : HomeColors.cardBorder, lineWidth: 1)
                 )
         }
+        .shadow(color: .black.opacity(isNow ? 0 : 0.35), radius: 18, y: 8)
         .shadow(
             color: isNow ? HomeColors.glowPrimary.opacity(0.8) : .clear,
             radius: 30,
@@ -435,14 +599,17 @@ private struct ClassCard: View {
             Text("Now")
                 .font(.system(size: 11.5, weight: .bold))
                 .foregroundStyle(HomeColors.tagBlue)
-                .padding(.horizontal, 9)
+                .padding(.horizontal, 10)
                 .padding(.vertical, 4)
-                .background(.white, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .background(.white, in: Capsule())
         case .upcoming(let isNext) where isNext:
             Text("Up next")
-                .font(.system(size: 12))
+                .font(.system(size: 11.5, weight: .bold))
                 .foregroundStyle(HomeColors.secondaryText)
-                .padding(.top, 1)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(Color.white.opacity(0.08), in: Capsule())
+                .overlay(Capsule().strokeBorder(HomeColors.cardBorder, lineWidth: 1))
         default:
             EmptyView()
         }

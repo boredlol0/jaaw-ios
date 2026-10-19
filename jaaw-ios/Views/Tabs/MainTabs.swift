@@ -3,9 +3,9 @@ import SwiftUI
 enum MainTab: Hashable {
     case home
     case attendance
+    case timetable
     case marks
     case calendar
-    case profile
 }
 
 struct MainTabs: View {
@@ -19,17 +19,20 @@ struct MainTabs: View {
             Tab("Attendance", systemImage: "checkmark.circle.fill", value: .attendance) {
                 AttendanceView()
             }
+            Tab("Timetable", systemImage: "tablecells.fill", value: .timetable) {
+                TimetableView()
+            }
             Tab("Marks", systemImage: "graduationcap.fill", value: .marks) {
                 MarksView()
             }
             Tab("Calendar", systemImage: "calendar", value: .calendar) {
                 CalendarView()
             }
-            Tab("Profile", systemImage: "person.crop.circle.fill", value: .profile) {
-                ProfileView()
-            }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
+        .onReceive(NotificationCenter.default.publisher(for: .jaawShowTimetable)) { _ in
+            selection = .timetable
+        }
     }
 }
 
