@@ -183,6 +183,8 @@ enum HomeDashboardFactory {
         let dayOrder = DashboardStats.todayDayOrder(calendar: calendar, now: now)
         let todayEntry = DashboardStats.todayCalendarEntry(calendar: calendar, now: now)
         let isHoliday = DashboardStats.isHoliday(dayOrder: dayOrder, entry: todayEntry)
+        let trimmedDescription = todayEntry?.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let dayDescription = trimmedDescription?.isEmpty == false ? trimmedDescription : nil
         let idx = DashboardStats.scheduleIndex(schedule: schedule, dayOrder: dayOrder)
         let entries = idx >= 0 ? schedule[idx].entries.sorted {
             DashboardStats.timeToMinutes($0.startTime) < DashboardStats.timeToMinutes($1.startTime)
@@ -221,8 +223,11 @@ enum HomeDashboardFactory {
         }
 
         let dateFmt = DateFormatter()
-        dateFmt.dateFormat = "E, d MMM"
+        dateFmt.dateFormat = "d MMM"
         dateFmt.locale = Locale(identifier: "en_US")
+        let weekdayFmt = DateFormatter()
+        weekdayFmt.dateFormat = "EEEE"
+        weekdayFmt.locale = Locale(identifier: "en_US")
         let initial = profile.name.first.map { String($0).uppercased() } ?? "J"
 
         let count = classes.count
@@ -328,11 +333,13 @@ enum HomeDashboardFactory {
         }
 
         return HomeDashboard(
-            dateLine: dateFmt.string(from: now),
+            monthDayLine: dateFmt.string(from: now),
+            weekdayLine: weekdayFmt.string(from: now),
             userInitial: initial,
-            dayOrderLabel: "Day\norder",
+            dayOrderLabel: "Day order",
             dayOrderNumber: dayOrder ?? "",
             isHoliday: isHoliday,
+            dayDescription: dayDescription,
             classCountLine: classCountLine,
             nextUpLine: nextUpLine,
             tiles: [attendanceTile, marksTile],

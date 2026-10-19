@@ -32,12 +32,15 @@ struct StatTile: Hashable {
 }
 
 struct HomeDashboard {
-    var dateLine: String       // "Wed, 7 Oct"
+    var monthDayLine: String   // "7 Oct"
+    var weekdayLine: String    // "Wednesday"
     var userInitial: String    // "T"
-    var dayOrderLabel: String  // "Day\norder"
+    var dayOrderLabel: String  // "Day order"
     var dayOrderNumber: String // "3"
     /// No class order today (holiday / weekend / non-numeric day order).
     var isHoliday: Bool = false
+    /// The calendar's own note for today (e.g. "Muharram"), when it has one.
+    var dayDescription: String? = nil
     var classCountLine: String // "5 classes"
     var nextUpLine: String     // "Next at 11:35"
     var tiles: [StatTile]
@@ -46,9 +49,10 @@ struct HomeDashboard {
     var classes: [ClassEntry]
 
     static let demo = HomeDashboard(
-        dateLine: "Wed, 7 Oct",
+        monthDayLine: "7 Oct",
+        weekdayLine: "Wednesday",
         userInitial: "T",
-        dayOrderLabel: "Day\norder",
+        dayOrderLabel: "Day order",
         dayOrderNumber: "3",
         classCountLine: "5 classes",
         nextUpLine: "Next at 11:35",

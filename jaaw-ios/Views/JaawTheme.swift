@@ -72,6 +72,23 @@ struct JaawBackground: View {
         fadeEndOpacity: 0.92
     )
 
+    /// Home reuses the brand backdrop: the same blue field and clouds as
+    /// landing/login, weighted so the glow sits behind the day-order hero.
+    static let home = Configuration(
+        orbOffsets: [
+            CGPoint(x: 20, y: -200),   // o3
+            CGPoint(x: -130, y: -120), // o1
+            CGPoint(x: -1, y: -20),    // o2 (trailing-anchored, resolved below)
+        ],
+        highlights: [
+            (UnitPoint(x: 0.74, y: 0.12), 240, 0.26),
+            (UnitPoint(x: 0.16, y: 0.34), 170, 0.13),
+        ],
+        fadeHeight: 420,
+        fadeMidOpacity: 0.6,
+        fadeEndOpacity: 0.9
+    )
+
     var configuration: Configuration
     var drift: Bool
     var reduceMotion: Bool
@@ -247,4 +264,20 @@ enum HomeColors {
     static let nowEnd = Color(hex: 0x1D1FE6)
     static let nowBorder = Color.white.opacity(0.18)
     static let tagBlue = Color(hex: 0x2022EE)
+}
+
+// MARK: - Home sheet palette
+// Home sits on the shared `JaawBackground` blue, so its header chrome reuses
+// the landing/login whites. Only the white timetable sheet needs its own ink,
+// which is what this covers.
+
+enum HomeSheet {
+    static let fill = Color.white
+    static let shadow = Color(red: 0.02, green: 0.03, blue: 0.25, opacity: 0.30)
+    static let title = Color(hex: 0x121722)
+    static let body = Color(hex: 0x6B7383)
+    static let muted = Color(hex: 0x9AA3B2)
+    static let divider = Color(hex: 0xE2E6EE)
+    static let strike = Color(hex: 0xB9C0CC)
+    static let accent = Color(hex: 0x2F5BFF)
 }

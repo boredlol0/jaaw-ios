@@ -30,7 +30,7 @@ struct ContentView: View {
                 case .login:
                     LoginView(
                         onBack: { path.removeLast() },
-                        onAuthenticated: {
+                        onAuthenticated: {	
                             // Auth flow complete: reset the stack so back
                             // never returns to the login form.
                             path = []
