@@ -6,9 +6,48 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		7EA1000000000000000000A5 /* jaaw-iosLiveActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7EA1000000000000000000A4 /* jaaw-iosLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		7EA1000000000000000000A8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7E5E18433070C1DF004F38DB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7EA1000000000000000000A3;
+			remoteInfo = jaaw-iosLiveActivity;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		7EA1000000000000000000A6 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				7EA1000000000000000000A5 /* jaaw-iosLiveActivity.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		7E5E184B3070C1DF004F38DB /* jaaw-ios.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "jaaw-ios.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		7EA1000000000000000000A4 /* jaaw-iosLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "jaaw-iosLiveActivity.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		7EA1000000000000000000B5 /* Exceptions for "jaaw-iosLiveActivity" folder in "jaaw-iosLiveActivity" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 7EA1000000000000000000A3 /* jaaw-iosLiveActivity */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		7E5E184D3070C1DF004F38DB /* jaaw-ios */ = {
@@ -16,10 +55,30 @@
 			path = "jaaw-ios";
 			sourceTree = "<group>";
 		};
+		7EA1000000000000000000A1 /* jaaw-iosLiveActivity */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				7EA1000000000000000000B5 /* Exceptions for "jaaw-iosLiveActivity" folder in "jaaw-iosLiveActivity" target */,
+			);
+			path = "jaaw-iosLiveActivity";
+			sourceTree = "<group>";
+		};
+		7EA1000000000000000000A2 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		7E5E18483070C1DF004F38DB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7EA1000000000000000000B3 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -33,6 +92,8 @@
 			isa = PBXGroup;
 			children = (
 				7E5E184D3070C1DF004F38DB /* jaaw-ios */,
+				7EA1000000000000000000A1 /* jaaw-iosLiveActivity */,
+				7EA1000000000000000000A2 /* Shared */,
 				7E5E184C3070C1DF004F38DB /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +102,7 @@
 			isa = PBXGroup;
 			children = (
 				7E5E184B3070C1DF004F38DB /* jaaw-ios.app */,
+				7EA1000000000000000000A4 /* jaaw-iosLiveActivity.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -55,13 +117,16 @@
 				7E5E18473070C1DF004F38DB /* Sources */,
 				7E5E18483070C1DF004F38DB /* Frameworks */,
 				7E5E18493070C1DF004F38DB /* Resources */,
+				7EA1000000000000000000A6 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				7EA1000000000000000000A7 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				7E5E184D3070C1DF004F38DB /* jaaw-ios */,
+				7EA1000000000000000000A2 /* Shared */,
 			);
 			name = "jaaw-ios";
 			packageProductDependencies = (
@@ -69,6 +134,29 @@
 			productName = "jaaw-ios";
 			productReference = 7E5E184B3070C1DF004F38DB /* jaaw-ios.app */;
 			productType = "com.apple.product-type.application";
+		};
+		7EA1000000000000000000A3 /* jaaw-iosLiveActivity */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7EA1000000000000000000B1 /* Build configuration list for PBXNativeTarget "jaaw-iosLiveActivity" */;
+			buildPhases = (
+				7EA1000000000000000000B2 /* Sources */,
+				7EA1000000000000000000B3 /* Frameworks */,
+				7EA1000000000000000000B4 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				7EA1000000000000000000A1 /* jaaw-iosLiveActivity */,
+				7EA1000000000000000000A2 /* Shared */,
+			);
+			name = "jaaw-iosLiveActivity";
+			packageProductDependencies = (
+			);
+			productName = "jaaw-iosLiveActivity";
+			productReference = 7EA1000000000000000000A4 /* jaaw-iosLiveActivity.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -81,6 +169,9 @@
 				LastUpgradeCheck = 2630;
 				TargetAttributes = {
 					7E5E184A3070C1DF004F38DB = {
+						CreatedOnToolsVersion = 26.3;
+					};
+					7EA1000000000000000000A3 = {
 						CreatedOnToolsVersion = 26.3;
 					};
 				};
@@ -100,12 +191,20 @@
 			projectRoot = "";
 			targets = (
 				7E5E184A3070C1DF004F38DB /* jaaw-ios */,
+				7EA1000000000000000000A3 /* jaaw-iosLiveActivity */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		7E5E18493070C1DF004F38DB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7EA1000000000000000000B4 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +221,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		7EA1000000000000000000B2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		7EA1000000000000000000A7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7EA1000000000000000000A3 /* jaaw-iosLiveActivity */;
+			targetProxy = 7EA1000000000000000000A8 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		7E5E18543070C1E5004F38DB /* Debug */ = {
@@ -256,6 +370,7 @@
 				DEVELOPMENT_TEAM = YJUMQHL6KA;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -288,6 +403,7 @@
 				DEVELOPMENT_TEAM = YJUMQHL6KA;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -310,6 +426,58 @@
 			};
 			name = Release;
 		};
+		7EA1000000000000000000A9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = YJUMQHL6KA;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "jaaw-iosLiveActivity/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = jaaw;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.tosh.jaaw-ios.liveactivity";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		7EA1000000000000000000B0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = YJUMQHL6KA;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "jaaw-iosLiveActivity/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = jaaw;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.tosh.jaaw-ios.liveactivity";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -327,6 +495,15 @@
 			buildConfigurations = (
 				7E5E18573070C1E5004F38DB /* Debug */,
 				7E5E18583070C1E5004F38DB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7EA1000000000000000000B1 /* Build configuration list for PBXNativeTarget "jaaw-iosLiveActivity" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7EA1000000000000000000A9 /* Debug */,
+				7EA1000000000000000000B0 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

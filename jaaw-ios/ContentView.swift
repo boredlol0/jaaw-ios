@@ -7,6 +7,7 @@ enum AppRoute: Hashable {
 }
 
 struct ContentView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var path: [AppRoute] = []
     @State private var session = SessionStore.shared
 
@@ -46,10 +47,18 @@ struct ContentView: View {
         }
         .onAppear {
             session.restore()
+            Task { await LiveClassActivityController.shared.sync() }
         }
         // Logging out clears the stack back to landing.
         .onChange(of: session.isLoggedIn) { _, loggedIn in
             if !loggedIn { path = [] }
+            Task { await LiveClassActivityController.shared.sync() }
+        }
+        // Coming back to the app is the one moment we can top up the
+        // scheduled live activities.
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task { await LiveClassActivityController.shared.sync() }
         }
     }
 

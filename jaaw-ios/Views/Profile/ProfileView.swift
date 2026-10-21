@@ -1,4 +1,5 @@
 import SwiftUI
+import ActivityKit
 
 // MARK: - Profile page
 // Pushed from the home page's avatar: the student's details on a card, with
@@ -9,6 +10,8 @@ struct ProfileView: View {
     @State private var session = SessionStore.shared
     @State private var drift = false
     @State private var isConfirmingLogout = false
+    @AppStorage(LiveClassActivityController.enabledKey) private var liveActivitiesEnabled = true
+    @State private var activitiesAllowed = ActivityAuthorizationInfo().areActivitiesEnabled
 
     private var profile: UserProfile { session.profile }
 
@@ -17,6 +20,8 @@ struct ProfileView: View {
             VStack(alignment: .leading, spacing: 0) {
                 identityCard
                 detailsCard
+                    .padding(.top, 14)
+                liveActivityCard
                     .padding(.top, 14)
                 logoutButton
                     .padding(.top, 18)
@@ -48,6 +53,7 @@ struct ProfileView: View {
         .onAppear {
             // The tab behind keeps its own backdrop; this page runs its own.
             TabActivity.shared.isDetailPresented = true
+            activitiesAllowed = ActivityAuthorizationInfo().areActivitiesEnabled
             guard !reduceMotion else { return }
             drift = true
         }
@@ -185,6 +191,61 @@ struct ProfileView: View {
         if !profile.section.isEmpty { rows.append(("Section", profile.section)) }
         if !profile.mobileNumber.isEmpty { rows.append(("Mobile", profile.mobileNumber)) }
         return rows
+    }
+
+    // MARK: - Live activities
+
+    /// The switch for the lock screen activity. iOS starts these on their own
+    /// once the app has asked for them, so the student never has to open jaaw
+    /// mid-class.
+    private var liveActivityCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Toggle(isOn: $liveActivitiesEnabled) {
+                HStack(spacing: 12) {
+                    Image(systemName: "waveform.path.ecg.rectangle")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(CardPalette.accentInk)
+                        .frame(width: 30, height: 30)
+                        .background(Circle().fill(CardPalette.accent.opacity(0.12)))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Live Activities")
+                            .font(.system(size: 14.5, weight: .semibold))
+                            .foregroundStyle(CardPalette.title)
+                        Text("Put the running class on your lock screen.")
+                            .font(.system(size: 12))
+                            .foregroundStyle(CardPalette.body)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .tint(CardPalette.accent)
+            .onChange(of: liveActivitiesEnabled) { _, enabled in
+                Task { await LiveClassActivityController.shared.setEnabled(enabled) }
+            }
+
+            if !activitiesAllowed {
+                Rectangle()
+                    .fill(CardPalette.divider)
+                    .frame(height: 1)
+                    .padding(.vertical, 12)
+                Text("Live Activities are switched off for jaaw in iOS Settings.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(CardPalette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(CardPalette.fill)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .strokeBorder(CardPalette.border, lineWidth: 1)
+                )
+                .shadow(color: CardPalette.shadow, radius: 26, y: 12)
+        }
     }
 
     // MARK: - Log out
