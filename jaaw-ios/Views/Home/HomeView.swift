@@ -24,7 +24,11 @@ struct HomeView: View {
         .background {
             ZStack {
                 JaawBackground(configuration: JaawBackground.home, drift: drift, reduceMotion: reduceMotion)
-                JaawVideoBackdrop(resource: JaawEntryVideo.landing, reduceMotion: reduceMotion)
+                JaawVideoBackdrop(
+                    resource: JaawEntryVideo.landing,
+                    reduceMotion: reduceMotion,
+                    isActive: TabActivity.shared.isActive(.home)
+                )
             }
             .allowsHitTesting(false)
         }
@@ -112,7 +116,7 @@ struct HomeView: View {
                     .padding(.trailing, 6)
                     .shadow(color: Color(red: 0, green: 0, blue: 90 / 255, opacity: 0.45), radius: 34, y: 8)
             } else {
-                Text(dashboard.dayOrderNumber)
+                Text(dashboard.dayOrderNumber + " ")
                     .font(.system(size: 104, weight: .heavy))
                     .tracking(-6)
                     .lineLimit(1)
@@ -177,18 +181,18 @@ struct HomeView: View {
                 }
                 .font(.system(size: 26, weight: .heavy))
                 .tracking(-1)
-                .foregroundStyle(HomeSheet.title)
+                .foregroundStyle(CardPalette.title)
                 .accessibilityAddTraits(.isHeader)
 
                 Spacer(minLength: 0)
 
                 Text(dashboard.todayTrailing)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(HomeSheet.body)
+                    .foregroundStyle(CardPalette.body)
                     .lineLimit(1)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(HomeSheet.divider.opacity(0.7), in: Capsule())
+                    .background(CardPalette.divider.opacity(0.7), in: Capsule())
                     // Drops the badge clear of the sheet's lowered right half.
                     .padding(.top, TimetableSheetShape.stepDrop - 12)
             }
@@ -196,7 +200,7 @@ struct HomeView: View {
 
             Text(summaryLine)
                 .font(.system(size: 14))
-                .foregroundStyle(HomeSheet.body)
+                .foregroundStyle(CardPalette.body)
                 .padding(.top, 6)
 
             hairline
@@ -233,8 +237,8 @@ struct HomeView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background {
             TimetableSheetShape()
-                .fill(HomeSheet.fill)
-                .shadow(color: HomeSheet.shadow, radius: 34, y: -16)
+                .fill(CardPalette.fill)
+                .shadow(color: CardPalette.shadow, radius: 34, y: -16)
                 // Not inside a ScrollView, so this reaches under the tab bar.
                 .ignoresSafeArea(edges: .bottom)
                 // …but a background under the tab bar must not eat its taps.
@@ -252,7 +256,7 @@ struct HomeView: View {
 
     private var hairline: some View {
         Rectangle()
-            .fill(HomeSheet.divider)
+            .fill(CardPalette.divider)
             .frame(height: 1)
     }
 
@@ -269,10 +273,10 @@ struct HomeView: View {
         VStack(spacing: 6) {
             Text("nothing on today, enjoy! ")
                 .font(JaawFonts.script(32))
-                .foregroundStyle(HomeSheet.accent)
+                .foregroundStyle(CardPalette.accent)
             Text(emptyTodayLine)
                 .font(.system(size: 13))
-                .foregroundStyle(HomeSheet.body)
+                .foregroundStyle(CardPalette.body)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -369,7 +373,7 @@ private struct ClassRowLight: View {
 
             if !isLast {
                 Rectangle()
-                    .fill(HomeSheet.divider)
+                    .fill(CardPalette.divider)
                     .frame(height: 1)
             }
         }
@@ -385,9 +389,9 @@ private struct ClassRowLight: View {
                 .font(.system(size: 10.5, weight: .semibold))
                 .tracking(0.5)
                 .textCase(.uppercase)
-                .foregroundStyle(HomeSheet.muted)
+                .foregroundStyle(CardPalette.muted)
         }
-        .foregroundStyle(isDone ? HomeSheet.muted : HomeSheet.title)
+        .foregroundStyle(isDone ? CardPalette.muted : CardPalette.title)
         .frame(width: 52, alignment: .leading)
         .padding(.top, 1)
     }
@@ -398,8 +402,8 @@ private struct ClassRowLight: View {
                 Text(entry.title)
                     .font(.system(size: 16, weight: isNow ? .heavy : .semibold))
                     .tracking(-0.3)
-                    .foregroundStyle(isDone ? HomeSheet.muted : HomeSheet.title)
-                    .strikethrough(isDone, color: HomeSheet.strike)
+                    .foregroundStyle(isDone ? CardPalette.muted : CardPalette.title)
+                    .strikethrough(isDone, color: CardPalette.strike)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
@@ -407,7 +411,7 @@ private struct ClassRowLight: View {
             }
             Text(entry.detail)
                 .font(.system(size: 13))
-                .foregroundStyle(HomeSheet.body)
+                .foregroundStyle(CardPalette.body)
 
             if case .now(let progress) = entry.status {
                 progressBar(progress)
@@ -425,18 +429,18 @@ private struct ClassRowLight: View {
                 .foregroundStyle(.white)
                 .padding(.horizontal, 9)
                 .padding(.vertical, 4)
-                .background(HomeSheet.accent, in: Capsule())
+                .background(CardPalette.accent, in: Capsule())
         case .upcoming(let isNext) where isNext:
             Text("Up next")
                 .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(HomeSheet.accent)
+                .foregroundStyle(CardPalette.accentInk)
                 .padding(.horizontal, 9)
                 .padding(.vertical, 4)
-                .background(HomeSheet.accent.opacity(0.12), in: Capsule())
+                .background(CardPalette.accent.opacity(0.12), in: Capsule())
         case .done:
             Image(systemName: "checkmark")
                 .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(HomeSheet.muted)
+                .foregroundStyle(CardPalette.muted)
                 .accessibilityHidden(true)
         default:
             EmptyView()
@@ -446,11 +450,11 @@ private struct ClassRowLight: View {
     private func progressBar(_ progress: Double) -> some View {
         GeometryReader { proxy in
             Capsule()
-                .fill(HomeSheet.accent.opacity(0.16))
+                .fill(CardPalette.accent.opacity(0.16))
                 .frame(height: 5)
                 .overlay(alignment: .leading) {
                     Capsule()
-                        .fill(HomeSheet.accent)
+                        .fill(CardPalette.accent)
                         .frame(width: proxy.size.width * progress, height: 5)
                         .scaleEffect(x: animated || reduceMotion ? 1 : 0, anchor: .leading)
                         .animation(

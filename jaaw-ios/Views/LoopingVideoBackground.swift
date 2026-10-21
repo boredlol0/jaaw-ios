@@ -16,9 +16,16 @@ enum JaawEntryVideo {
 struct JaawVideoBackdrop: View {
     var resource: String
     var reduceMotion: Bool
+    /// False pauses the clip — the tab pages use this to keep only the
+    /// visible tab's backdrop running.
+    var isActive: Bool = true
 
     var body: some View {
-        LoopingVideoBackground(resource: resource, reduceMotion: reduceMotion)
+        LoopingVideoBackground(
+            resource: resource,
+            reduceMotion: reduceMotion,
+            isActive: isActive
+        )
             .overlay {
                 LinearGradient(
                     stops: [
@@ -43,15 +50,17 @@ struct LoopingVideoBackground: UIViewRepresentable {
     var fileExtension: String = "mp4"
     /// With Reduce Motion on, the first frame is held instead of playing.
     var reduceMotion: Bool = false
+    /// False holds the first frame — the clip isn't the visible tab's.
+    var isActive: Bool = true
 
     func makeUIView(context: Context) -> LoopingPlayerView {
         let view = LoopingPlayerView()
-        view.load(resource: resource, fileExtension: fileExtension, autoplay: !reduceMotion)
+        view.load(resource: resource, fileExtension: fileExtension, autoplay: !reduceMotion, isActive: isActive)
         return view
     }
 
     func updateUIView(_ view: LoopingPlayerView, context: Context) {
-        view.load(resource: resource, fileExtension: fileExtension, autoplay: !reduceMotion)
+        view.load(resource: resource, fileExtension: fileExtension, autoplay: !reduceMotion, isActive: isActive)
     }
 
     static func dismantleUIView(_ view: LoopingPlayerView, coordinator: ()) {
@@ -80,8 +89,8 @@ final class LoopingPlayerView: UIView {
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
 
-    func load(resource: String, fileExtension: String, autoplay: Bool) {
-        shouldPlay = autoplay
+    func load(resource: String, fileExtension: String, autoplay: Bool, isActive: Bool = true) {
+        shouldPlay = autoplay && isActive
 
         // Re-loading the same clip (updateUIView fires often) must not restart it.
         guard loadedResource != resource else {

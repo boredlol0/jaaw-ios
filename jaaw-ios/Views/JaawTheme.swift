@@ -34,6 +34,26 @@ extension Color {
             opacity: alpha
         )
     }
+
+    /// A colour that follows the system appearance, swapping between a light
+    /// and a dark value. Dynamic under the hood, so it flips the moment the
+    /// device changes appearance.
+    init(light: UInt, dark: UInt) {
+        self.init(uiColor: UIColor { traits in
+            UIColor(hex: traits.userInterfaceStyle == .dark ? dark : light)
+        })
+    }
+}
+
+extension UIColor {
+    convenience init(hex: UInt) {
+        self.init(
+            red: CGFloat((hex >> 16) & 0xFF) / 255,
+            green: CGFloat((hex >> 8) & 0xFF) / 255,
+            blue: CGFloat(hex & 0xFF) / 255,
+            alpha: 1
+        )
+    }
 }
 
 struct JaawBackground: View {
@@ -86,6 +106,71 @@ struct JaawBackground: View {
         ],
         fadeHeight: 420,
         fadeMidOpacity: 0.6,
+        fadeEndOpacity: 0.9
+    )
+
+    /// Calendar: the same brand field, weighted so the glow sits behind the
+    /// page header and the month grid below it stays legible.
+    static let calendar = Configuration(
+        orbOffsets: [
+            CGPoint(x: 30, y: -210),   // o3
+            CGPoint(x: -140, y: -140), // o1
+            CGPoint(x: -1, y: -30),    // o2 (trailing-anchored, resolved below)
+        ],
+        highlights: [
+            (UnitPoint(x: 0.80, y: 0.10), 250, 0.26),
+            (UnitPoint(x: 0.12, y: 0.30), 180, 0.12),
+        ],
+        fadeHeight: 460,
+        fadeMidOpacity: 0.62,
+        fadeEndOpacity: 0.9
+    )
+
+    /// Marks: the glow sits behind the score hero on the trailing side.
+    static let marks = Configuration(
+        orbOffsets: [
+            CGPoint(x: 10, y: -230),   // o3
+            CGPoint(x: -120, y: -150), // o1
+            CGPoint(x: -1, y: -40),    // o2 (trailing-anchored, resolved below)
+        ],
+        highlights: [
+            (UnitPoint(x: 0.82, y: 0.08), 260, 0.28),
+            (UnitPoint(x: 0.14, y: 0.26), 170, 0.12),
+        ],
+        fadeHeight: 480,
+        fadeMidOpacity: 0.64,
+        fadeEndOpacity: 0.9
+    )
+
+    /// Timetable: the glow sits behind the day-order hero.
+    static let timetable = Configuration(
+        orbOffsets: [
+            CGPoint(x: 40, y: -220),   // o3
+            CGPoint(x: -150, y: -130), // o1
+            CGPoint(x: -1, y: -25),    // o2 (trailing-anchored, resolved below)
+        ],
+        highlights: [
+            (UnitPoint(x: 0.78, y: 0.09), 255, 0.27),
+            (UnitPoint(x: 0.13, y: 0.28), 175, 0.12),
+        ],
+        fadeHeight: 470,
+        fadeMidOpacity: 0.63,
+        fadeEndOpacity: 0.9
+    )
+
+    /// Attendance: the glow sits behind the overall-score hero.
+    static let attendance = Configuration(
+        orbOffsets: [
+            CGPoint(x: 0, y: -235),    // o3
+            CGPoint(x: -130, y: -140), // o1
+            CGPoint(x: -1, y: -35),    // o2 (trailing-anchored, resolved below)
+        ],
+        highlights: [
+            (UnitPoint(x: 0.80, y: 0.09), 255, 0.27),
+            (UnitPoint(x: 0.12, y: 0.27), 180, 0.12),
+        ],
+        fadeHeight: 470,
+        fadeMidOpacity: 0.63,
         fadeEndOpacity: 0.9
     )
 
@@ -203,6 +288,47 @@ struct JaawBackground: View {
     }
 }
 
+/// The backdrop shared by the calendar, marks, timetable and attendance tabs:
+/// the brand field, the entry clip behind it, and a scrim that keeps white
+/// type legible over the clip's bright cloud band.
+struct JaawTabBackdrop: View {
+    var configuration: JaawBackground.Configuration
+    var drift: Bool
+    var reduceMotion: Bool
+    /// The tab this backdrop belongs to — its clip only plays while that tab
+    /// is the visible one.
+    var tab: MainTab
+
+    var body: some View {
+        ZStack {
+            JaawBackground(
+                configuration: configuration,
+                drift: drift,
+                reduceMotion: reduceMotion
+            )
+            JaawVideoBackdrop(
+                resource: JaawEntryVideo.landing,
+                reduceMotion: reduceMotion,
+                isActive: TabActivity.shared.isActive(tab)
+            )
+            // The clip's bright cloud band would swallow white type sitting
+            // behind the glass panels, so the tabs run a deeper scrim than the
+            // landing page does.
+            LinearGradient(
+                stops: [
+                    .init(color: JaawColors.scrimDeep.opacity(0.30), location: 0),
+                    .init(color: JaawColors.scrimDeep.opacity(0.60), location: 0.42),
+                    .init(color: JaawColors.scrimDeep.opacity(0.80), location: 1),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+    }
+}
+
 struct GlassPanel<Content: View>: View {
     var cornerRadius: CGFloat = 26
     @ViewBuilder var content: Content
@@ -266,18 +392,98 @@ enum HomeColors {
     static let tagBlue = Color(hex: 0x2022EE)
 }
 
-// MARK: - Home sheet palette
-// Home sits on the shared `JaawBackground` blue, so its header chrome reuses
-// the landing/login whites. Only the white timetable sheet needs its own ink,
-// which is what this covers.
+// MARK: - Card palette
+// The sheets and cards follow the system appearance: paper white on light,
+// deep slate on dark. The values are dynamic, so a card flips the moment the
+// device changes appearance and keeps its own contrast either way.
 
-enum HomeSheet {
-    static let fill = Color.white
-    static let shadow = Color(red: 0.02, green: 0.03, blue: 0.25, opacity: 0.30)
-    static let title = Color(hex: 0x121722)
-    static let body = Color(hex: 0x6B7383)
-    static let muted = Color(hex: 0x9AA3B2)
-    static let divider = Color(hex: 0xE2E6EE)
-    static let strike = Color(hex: 0xB9C0CC)
+enum CardPalette {
+    /// The card's own surface.
+    static let fill = Color(light: 0xFFFFFF, dark: 0x14161F)
+    /// Ink.
+    static let title = Color(light: 0x121722, dark: 0xF3F5FB)
+    static let body = Color(light: 0x6B7383, dark: 0xA7AFC2)
+    static let muted = Color(light: 0x9AA3B2, dark: 0x7A8499)
+    static let strike = Color(light: 0xB9C0CC, dark: 0x5B6376)
+    /// Hairlines.
+    static let divider = Color(light: 0xE2E6EE, dark: 0x272B38)
+    /// The accent, used as a fill behind white text — the same blue in both
+    /// appearances so the buttons stay legible.
     static let accent = Color(hex: 0x2F5BFF)
+    /// The accent as ink on a card, lightened once the card is dark.
+    static let accentInk = Color(light: 0x2F5BFF, dark: 0x8FA6FF)
+    /// Raised sub-surfaces: stat strips, chips and progress tracks.
+    static let surface = Color(light: 0xF4F6FA, dark: 0x1D212D)
+    static let surfaceAlt = Color(light: 0xEEF1F7, dark: 0x252A38)
+    static let track = Color(light: 0xEDF0F5, dark: 0x2C3140)
+    /// The card's edge — invisible on paper, a hairline once the card is dark.
+    static let border = Color.white.opacity(0.10)
+    /// The lift under a card.
+    static let shadow = Color(
+        uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor.black.withAlphaComponent(0.55)
+                : UIColor(red: 0.02, green: 0.03, blue: 0.25, alpha: 0.30)
+        }
+    )
+}
+
+// MARK: - Calendar palette
+// The month grid lives on dark glass, so its day markers need bright tones
+// to read against the video; the same markers become chips on the card,
+// which need deeper ones on paper and brighter ones once it turns dark.
+
+enum CalendarPalette {
+    /// Markers on the dark glass grid.
+    static let holidayDot = Color(hex: 0x3DDC84)
+    static let eventDot = Color(hex: 0xFF7A66)
+    static let dayOrderDot = Color(hex: 0x8FA6FF)
+
+    /// Chips on the card.
+    static let holidayChip = Color(light: 0x0E9F6E, dark: 0x3DDC84)
+    static let eventChip = Color(light: 0xE0442E, dark: 0xFF7A66)
+    static let dayOrderChip = Color(light: 0x2F5BFF, dark: 0x8FA6FF)
+    static let plainChip = Color(light: 0x8C94A4, dark: 0x9AA3B2)
+}
+
+// MARK: - Marks palette
+// Score tiers run from a deep green through the brand blue and amber to a
+// warm red, so a score reads at a glance without leaning on bland greys.
+// They lighten once the card they sit on turns dark.
+
+enum MarksPalette {
+    static let strong = Color(light: 0x12B981, dark: 0x2FD69C)
+    static let steady = Color(light: 0x2F5BFF, dark: 0x8FA6FF)
+    static let soft = Color(light: 0xF59E0B, dark: 0xFBBF24)
+    static let weak = Color(light: 0xEF5B5B, dark: 0xF87171)
+    /// The "best course" marker.
+    static let best = Color(light: 0xFFB020, dark: 0xFFC44D)
+
+    /// The tier a percentage falls into.
+    static func tier(for percent: Double) -> Color {
+        switch percent {
+        case 85...: return strong
+        case 70..<85: return steady
+        case 50..<70: return soft
+        default: return weak
+        }
+    }
+}
+
+// MARK: - Attendance palette
+// Attendance is judged against the 75% rule, so its tiers break at
+// different points than marks do.
+
+enum AttendancePalette {
+    static let safe = Color(light: 0x12B981, dark: 0x2FD69C)
+    static let warning = Color(light: 0xF59E0B, dark: 0xFBBF24)
+    static let atRisk = Color(light: 0xEF5B5B, dark: 0xF87171)
+
+    static func tier(for percent: Double) -> Color {
+        switch percent {
+        case 85...: return safe
+        case 75..<85: return warning
+        default: return atRisk
+        }
+    }
 }

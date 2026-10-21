@@ -1,12 +1,45 @@
 import SwiftUI
 
 // MARK: - Timetable tab
-// Day-order tabs (D01…) with a timeline of classes, break gaps and a live
-// highlight when the selected day is today.
+// The brand backdrop carries the header and the day-order hero, a glass strip
+// picks the day, and the day's classes sit in a white sheet as hairline
+// separated rows — the same sheet the home page shows for today.
+
+extension Notification.Name {
+    static let jaawShowTimetable = Notification.Name("jaaw.showTimetable")
+}
+
+/// Carries a day over from another tab. The timetable tab may not exist yet
+/// when the request is made (the tab bar builds tabs lazily), so the index
+/// is parked here until the timetable picks it up.
+@Observable
+final class TimetableRoute {
+    static let shared = TimetableRoute()
+
+    var pendingIndex: Int?
+
+    /// Ask the timetable to show a day.
+    func request(_ index: Int) {
+        pendingIndex = index
+        NotificationCenter.default.post(
+            name: .jaawShowTimetable,
+            object: nil,
+            userInfo: ["scheduleIndex": index]
+        )
+    }
+
+    /// The parked request, cleared once it has been taken.
+    func take() -> Int? {
+        defer { pendingIndex = nil }
+        return pendingIndex
+    }
+}
 
 struct TimetableView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var session = SessionStore.shared
     @State private var selectedDay: Int?
+    @State private var drift = false
 
     private var schedule: [ScheduleDay] {
         session.schedule
@@ -38,129 +71,219 @@ struct TimetableView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                kicker
-                dayTabs
-                    .padding(.top, 14)
-                if entries.isEmpty {
+                header
+                if schedule.isEmpty {
                     emptyState
+                        .padding(.top, 24)
                 } else {
-                    timeline
+                    daySelector
                         .padding(.top, 18)
+                    daySheet
+                        .padding(.top, 16)
                 }
             }
-            .padding(.horizontal, 18)
-            .padding(.top, 8)
-            .padding(.bottom, 32)
+            .padding(.horizontal, 20)
+            .padding(.top, 6)
+            .padding(.bottom, 40)
         }
-        .background(HomeColors.page)
+        .scrollIndicators(.hidden)
+        .background { backdrop }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
-            if selectedDay == nil { selectedDay = activeDay }
+            if let index = TimetableRoute.shared.take(), index < schedule.count {
+                selectedDay = index
+            } else if selectedDay == nil {
+                selectedDay = activeDay
+            }
+            guard !reduceMotion else { return }
+            drift = true
         }
         .onReceive(NotificationCenter.default.publisher(for: .jaawShowTimetable)) { note in
-            if let idx = note.userInfo?["scheduleIndex"] as? Int,
-               idx < schedule.count {
-                selectedDay = idx
+            // Always clears the parked request, so a later appearance can't
+            // re-apply a stale day.
+            let parked = TimetableRoute.shared.take()
+            let index = (note.userInfo?["scheduleIndex"] as? Int) ?? parked
+            if let index, index < schedule.count {
+                selectedDay = index
             }
         }
     }
 
-    // MARK: - Kicker
+    private var backdrop: some View {
+        JaawTabBackdrop(
+            configuration: JaawBackground.timetable,
+            drift: drift,
+            reduceMotion: reduceMotion,
+            tab: .timetable
+        )
+    }
 
-    private var kicker: some View {
-        HStack(alignment: .lastTextBaseline) {
-            Text("Timetable")
-                .font(.system(size: 28, weight: .heavy))
-                .tracking(-1.1)
-                .foregroundStyle(.white)
-                .accessibilityAddTraits(.isHeader)
+    // MARK: - Header
+
+    private var header: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Timetable")
+                    .font(.system(size: 34, weight: .heavy))
+                    .tracking(-1.3)
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                Text(summaryLine)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(JaawColors.ice.opacity(0.78))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .shadow(color: Color(red: 0, green: 0, blue: 90 / 255, opacity: 0.45), radius: 26, y: 8)
+
             Spacer(minLength: 0)
-            Text(dateLabel)
-                .font(.system(size: 14))
-                .foregroundStyle(HomeColors.faintText)
+
+            dayOrderHero
         }
-        .padding(.horizontal, 6)
-        .padding(.top, 8)
-        .accessibilityElement(children: .combine)
+        .padding(.top, 6)
     }
 
-    private var dateLabel: String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "d MMM yyyy"
-        fmt.locale = Locale(identifier: "en_US")
-        return fmt.string(from: Date())
+    private var summaryLine: String {
+        guard !schedule.isEmpty, activeDay != nil else { return "No timetable data yet" }
+        let count = entries.count
+        let classes = "\(count) class\(count == 1 ? "" : "es")"
+        guard let first = entries.first, let last = entries.last else { return classes }
+        return "\(classes) · \(timeLabel(first.startTime)) – \(timeLabel(last.endTime))"
     }
 
-    // MARK: - Day tabs
+    /// The active day's order number, in the home page's trailing-hero slot.
+    private var dayOrderHero: some View {
+        VStack(alignment: .trailing, spacing: -6) {
+            Text("DAY ORDER")
+                .font(.system(size: 12, weight: .heavy))
+                .tracking(2.1)
+                .foregroundStyle(JaawColors.ice.opacity(0.72))
+            Text(dayOrderNumber)
+                .font(.system(size: 64, weight: .heavy))
+                .tracking(-3.6)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .foregroundStyle(.white)
+                .shadow(color: Color(red: 0, green: 0, blue: 90 / 255, opacity: 0.5), radius: 34, y: 8)
+        }
+        .frame(width: 140, alignment: .trailing)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Day order \(dayOrderNumber)")
+    }
 
-    private var dayTabs: some View {
+    /// The day order of the selected day, zero-padded ("03").
+    private var dayOrderNumber: String {
+        guard let activeDay else { return "—" }
+        return dayNumber(for: activeDay)
+    }
+
+    // MARK: - Day selector
+
+    private var daySelector: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                ForEach(schedule.indices, id: \.self) { i in
-                    let day = schedule[i]
-                    let num = day.dayLabel.filter(\.isNumber)
-                    let isActive = activeDay == i
-                    let isToday = todayIndex == i
-                    Button {
-                        selectedDay = i
-                    } label: {
-                        HStack(spacing: 6) {
-                            Text("D\(num.count == 1 ? "0\(num)" : num)")
-                                .font(.system(size: 15, weight: .bold))
-                            if isToday {
-                                Circle()
-                                    .fill(isActive ? .white : HomeColors.ringSecondary)
-                                    .frame(width: 6, height: 6)
-                                    .accessibilityHidden(true)
-                            }
-                        }
-                        .foregroundStyle(isActive ? HomeColors.tagBlue : .white)
-                        .padding(.horizontal, 17)
-                        .padding(.vertical, 11)
-                        .background(
-                            isActive ? .white : Color.white.opacity(0.08),
-                            in: Capsule()
-                        )
-                        .overlay(
-                            Capsule()
-                                .strokeBorder(
-                                    isActive ? Color.clear : HomeColors.cardBorder,
-                                    lineWidth: 1
-                                )
-                        )
-                    }
-                    .accessibilityLabel("Day \(num)\(isToday ? ", today" : "")")
+            HStack(spacing: 6) {
+                ForEach(schedule.indices, id: \.self) { index in
+                    dayPill(index)
                 }
             }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
+            .padding(6)
+        }
+        .glassEffect(.regular, in: .rect(cornerRadius: 24))
+    }
+
+    private func dayPill(_ index: Int) -> some View {
+        let isActive = activeDay == index
+        let isToday = todayIndex == index
+        let label = dayNumber(for: index)
+        return Button {
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.8)) {
+                selectedDay = index
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Text("D\(label)")
+                    .font(.system(size: 14, weight: .bold))
+                if isToday {
+                    Circle()
+                        .fill(isActive ? CardPalette.accent : Color.white.opacity(0.8))
+                        .frame(width: 6, height: 6)
+                }
+            }
+            .foregroundStyle(isActive ? CardPalette.accent : .white)
+            .padding(.horizontal, 17)
+            .padding(.vertical, 10)
+            .background(
+                isActive ? AnyShapeStyle(.white) : AnyShapeStyle(Color.white.opacity(0.06)),
+                in: .capsule
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Day order \(label)\(isToday ? ", today" : "")")
+        .accessibilityAddTraits(isActive ? [.isSelected, .isButton] : .isButton)
+    }
+
+    private func dayNumber(for index: Int) -> String {
+        guard index < schedule.count else { return "—" }
+        let digits = schedule[index].dayLabel.filter(\.isNumber)
+        guard !digits.isEmpty else { return "—" }
+        return digits.count == 1 ? "0\(digits)" : digits
+    }
+
+    /// The selected day's own label from the API ("Day 1").
+    private var dayTitle: String {
+        guard let activeDay, activeDay < schedule.count else { return "Classes" }
+        let label = schedule[activeDay].dayLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+        return label.isEmpty ? "Day \(dayOrderNumber)" : label
+    }
+
+    // MARK: - Day sheet
+
+    private var daySheet: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(dayTitle)
+                    .font(.system(size: 19, weight: .heavy))
+                    .tracking(-0.5)
+                    .foregroundStyle(CardPalette.title)
+                Spacer(minLength: 0)
+                if isShowingToday {
+                    Text("Today")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(CardPalette.accent, in: Capsule())
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 18)
+            .padding(.bottom, 14)
+
+            Rectangle()
+                .fill(CardPalette.divider)
+                .frame(height: 1)
+
+            if entries.isEmpty {
+                emptyDay
+            } else {
+                timeline
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(CardPalette.fill)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .strokeBorder(CardPalette.border, lineWidth: 1)
+                )
+                .shadow(color: CardPalette.shadow, radius: 30, y: 16)
         }
     }
 
     // MARK: - Timeline
-
-    private var emptyState: some View {
-        VStack(spacing: 12) {
-            Image(systemName: schedule.isEmpty ? "calendar" : "moon.zzz.fill")
-                .font(.system(size: 26, weight: .semibold))
-                .foregroundStyle(HomeColors.faintText)
-            Text(schedule.isEmpty ? "No timetable data yet." : "No classes for this day.")
-                .font(.system(size: 15))
-                .foregroundStyle(HomeColors.secondaryText)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 40)
-        .padding(.horizontal, 20)
-        .background(HomeColors.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .strokeBorder(HomeColors.cardBorder, lineWidth: 1)
-        )
-        .padding(.top, 18)
-        .accessibilityElement(children: .combine)
-    }
 
     private var timeline: some View {
         VStack(spacing: 0) {
@@ -173,9 +296,10 @@ struct TimetableView: View {
                 if gap > 5, prev != nil {
                     breakLabel(minutes: gap)
                 }
-                TimetableRow(
+                TimetableClassRow(
                     entry: entry,
-                    isLive: isShowingToday && classStatus(entry) == .current
+                    isLast: i == entries.count - 1,
+                    status: rowStatus(entry)
                 )
             }
         }
@@ -184,20 +308,20 @@ struct TimetableView: View {
     private func breakLabel(minutes: Int) -> some View {
         HStack(spacing: 12) {
             Rectangle()
-                .fill(HomeColors.cardBorder)
+                .fill(CardPalette.divider)
                 .frame(height: 1)
             Text(breakText(minutes))
                 .font(.system(size: 11, weight: .semibold))
                 .tracking(0.3)
-                .foregroundStyle(HomeColors.faintText)
+                .foregroundStyle(CardPalette.muted)
                 .fixedSize()
             Rectangle()
-                .fill(HomeColors.cardBorder)
+                .fill(CardPalette.divider)
                 .frame(height: 1)
         }
-        .padding(.leading, 96)
-        .padding(.trailing, 2)
-        .padding(.vertical, 14)
+        .padding(.leading, 86)
+        .padding(.trailing, 20)
+        .padding(.vertical, 12)
         .accessibilityHidden(true)
     }
 
@@ -209,136 +333,237 @@ struct TimetableView: View {
         return "\(m)m break"
     }
 
-    private enum DayClassStatus { case done, current, upcoming }
+    // MARK: - Row status
 
-    private func classStatus(_ entry: ScheduleEntry) -> DayClassStatus {
+    private func rowStatus(_ entry: ScheduleEntry) -> TimetableClassRow.Status {
+        guard isShowingToday else { return .upcoming(isNext: false) }
         let now = DashboardStats.nowMinutes()
         let start = DashboardStats.timeToMinutes(entry.startTime)
         let end = DashboardStats.timeToMinutes(entry.endTime)
         if now >= end { return .done }
-        if now >= start { return .current }
-        return .upcoming
+        if now >= start {
+            let span = max(end - start, 1)
+            return .current(progress: min(max(Double(now - start) / Double(span), 0), 1))
+        }
+        // The next class of the day gets the "up next" marker.
+        let nextEntry = entries.first { DashboardStats.timeToMinutes($0.startTime) > now }
+        return .upcoming(isNext: nextEntry == entry)
+    }
+
+    // MARK: - Empty state
+
+    private var emptyDay: some View {
+        VStack(spacing: 6) {
+            Image(systemName: "moon.zzz.fill")
+                .font(.system(size: 24, weight: .semibold))
+                .foregroundStyle(CardPalette.muted)
+            Text("No classes for this day.")
+                .font(.system(size: 15))
+                .foregroundStyle(CardPalette.body)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 38)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "calendar.badge.exclamationmark")
+                .font(.system(size: 30, weight: .semibold))
+                .foregroundStyle(JaawColors.ice.opacity(0.8))
+            Text("No timetable data")
+                .font(.system(size: 20, weight: .heavy))
+                .foregroundStyle(.white)
+            Text("Your weekly timetable will appear here after your next login.")
+                .font(.system(size: 14))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(JaawColors.ice.opacity(0.7))
+                .frame(maxWidth: 280)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 44)
+        .padding(.horizontal, 20)
+        .glassEffect(.regular, in: .rect(cornerRadius: 28))
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: - Times
+
+    private func timeLabel(_ raw: String) -> String {
+        let (time, period) = DashboardStats.displayTime(
+            minutes: DashboardStats.timeToMinutes(raw)
+        )
+        return "\(time) \(period)"
     }
 }
 
-// MARK: - Row
+// MARK: - Class row
 
-private struct TimetableRow: View {
+/// One class on the white sheet: its time down the left, the course and its
+/// status to the right, hairline separated like the home page's list.
+private struct TimetableClassRow: View {
     var entry: ScheduleEntry
-    var isLive: Bool
+    var isLast: Bool
+    var status: Status
+
+    enum Status {
+        case done
+        case current(progress: Double)
+        case upcoming(isNext: Bool)
+    }
+
+    private var isDone: Bool {
+        if case .done = status { return true }
+        return false
+    }
+
+    private var isCurrent: Bool {
+        if case .current = status { return true }
+        return false
+    }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .trailing, spacing: 4) {
-                Text(DashboardStats.parseTime(entry.startTime))
-                    .font(.system(size: 15, weight: .semibold))
-                Text(DashboardStats.parseTime(entry.endTime))
-                    .font(.system(size: 12.5))
-                    .foregroundStyle(HomeColors.secondaryText)
+        VStack(spacing: 0) {
+            HStack(alignment: .top, spacing: 14) {
+                timeColumn
+                content
             }
-            .frame(width: 58, alignment: .trailing)
-            .padding(.top, 28)
-            .foregroundStyle(HomeColors.timeText)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .background {
+                if isCurrent {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(CardPalette.accent.opacity(0.07))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                }
+            }
 
-            rail
+            if case .current(let progress) = status {
+                progressBar(progress)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 16)
+            }
 
-            card
-                .padding(.vertical, 10)
+            if !isLast {
+                Rectangle()
+                    .fill(CardPalette.divider)
+                    .frame(height: 1)
+                    .padding(.leading, 86)
+            }
         }
-        .background(alignment: .leading) { railLine }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
-            "\(DashboardStats.parseTime(entry.startTime)) to \(DashboardStats.parseTime(entry.endTime)), \(entry.courseCode), \(DashboardStats.normalizeSubject(entry.courseTitle))"
+            "\(DashboardStats.parseTime(entry.startTime)) \(period), \(entry.courseCode), \(DashboardStats.normalizeSubject(entry.courseTitle))\(statusSuffix)"
         )
     }
 
-    // MARK: - Timeline rail
+    // MARK: - Time column
 
-    /// Full-height line drawn as a row background (a `maxHeight` frame can't
-    /// stretch inside a `ScrollView`), plus a node in the middle column.
-    private var railLine: some View {
-        Rectangle()
-            .fill(Color.white.opacity(0.10))
-            .frame(width: 2)
-            .padding(.leading, 76)
+    private var timeColumn: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(DashboardStats.parseTime(entry.startTime))
+                .font(.system(size: 15, weight: .bold))
+            Text(period)
+                .font(.system(size: 10.5, weight: .semibold))
+                .tracking(0.5)
+                .textCase(.uppercase)
+                .foregroundStyle(CardPalette.muted)
+        }
+        .foregroundStyle(isDone ? CardPalette.muted : CardPalette.title)
+        .frame(width: 52, alignment: .leading)
+        .padding(.top, 1)
     }
 
-    private var rail: some View {
-        Circle()
-            .fill(isLive ? HomeColors.ringSecondary : Color.white.opacity(0.30))
-            .frame(width: 10, height: 10)
-            .overlay(Circle().strokeBorder(HomeColors.page, lineWidth: 3))
-            .padding(.top, 32)
-            .frame(width: 14)
-            .accessibilityHidden(true)
+    /// "am" / "pm", worked out from the start time.
+    private var period: String {
+        DashboardStats.timeToMinutes(entry.startTime) >= 12 * 60 ? "pm" : "am"
     }
 
-    // MARK: - Card
+    // MARK: - Content
 
-    private var card: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if isLive {
-                Text("Live now")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(HomeColors.tagBlue)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(.white, in: Capsule())
-                    .padding(.bottom, 10)
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(DashboardStats.normalizeSubject(entry.courseTitle))
+                    .font(.system(size: 17, weight: isCurrent ? .heavy : .semibold))
+                    .tracking(-0.35)
+                    .foregroundStyle(isDone ? CardPalette.muted : CardPalette.title)
+                    .strikethrough(isDone, color: CardPalette.strike)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                statusTag
             }
-            Text(entry.courseCode)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(HomeColors.tileEyebrow)
-            Text(DashboardStats.normalizeSubject(entry.courseTitle))
-                .font(.system(size: 18, weight: .heavy))
-                .tracking(-0.45)
-                .foregroundStyle(.white)
-                .padding(.top, 3)
             Text("\(entry.room) · \(DashboardStats.facultyShort(entry.faculty))")
                 .font(.system(size: 13))
-                .foregroundStyle(HomeColors.secondaryText)
-                .padding(.top, 5)
-            metaRow
+                .foregroundStyle(CardPalette.body)
+                .lineLimit(1)
+
+            HStack(spacing: 8) {
+                Text(typeLabel)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(isLab ? CardPalette.accentInk : CardPalette.muted)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 3)
+                    .background(
+                        isLab ? CardPalette.accent.opacity(0.10) : CardPalette.surfaceAlt,
+                        in: Capsule()
+                    )
+                if !duration.isEmpty {
+                    Text(duration)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(CardPalette.muted)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.top, 6)
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .foregroundStyle(.white)
-        .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(isLive ? AnyShapeStyle(liveGradient) : AnyShapeStyle(HomeColors.card))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .strokeBorder(
-                            isLive ? HomeColors.nowBorder : HomeColors.cardBorder,
-                            lineWidth: 1
-                        )
-                )
-        }
-        .shadow(color: .black.opacity(isLive ? 0 : 0.35), radius: 18, y: 8)
-        .shadow(
-            color: isLive ? HomeColors.glowPrimary.opacity(0.8) : .clear,
-            radius: 30,
-            y: 10
-        )
     }
 
-    private var metaRow: some View {
-        HStack(spacing: 8) {
-            Text(typeLabel)
+    @ViewBuilder
+    private var statusTag: some View {
+        switch status {
+        case .current:
+            Text("Now")
                 .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(isLab ? HomeColors.tagBlue : HomeColors.secondaryText)
+                .foregroundStyle(.white)
                 .padding(.horizontal, 9)
-                .padding(.vertical, 3)
-                .background(Color.white.opacity(0.08), in: Capsule())
-            if !duration.isEmpty {
-                Text(duration)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(HomeColors.faintText)
-            }
-            Spacer(minLength: 0)
+                .padding(.vertical, 4)
+                .background(CardPalette.accent, in: Capsule())
+        case .upcoming(let isNext) where isNext:
+            Text("Up next")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(CardPalette.accentInk)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(CardPalette.accent.opacity(0.12), in: Capsule())
+        case .done:
+            Image(systemName: "checkmark")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(CardPalette.muted)
+                .accessibilityHidden(true)
+        default:
+            EmptyView()
         }
-        .padding(.top, 12)
     }
+
+    private func progressBar(_ progress: Double) -> some View {
+        GeometryReader { proxy in
+            Capsule()
+                .fill(CardPalette.accent.opacity(0.14))
+                .frame(height: 5)
+                .overlay(alignment: .leading) {
+                    Capsule()
+                        .fill(CardPalette.accent)
+                        .frame(width: proxy.size.width * progress, height: 5)
+                }
+        }
+        .frame(height: 5)
+        .accessibilityValue("\(Int(progress * 100)) percent elapsed")
+    }
+
+    // MARK: - Values
 
     private var isLab: Bool {
         entry.slotType.lowercased() == "practical"
@@ -361,12 +586,12 @@ private struct TimetableRow: View {
         return "\(m)m"
     }
 
-    private var liveGradient: LinearGradient {
-        LinearGradient(
-            colors: [HomeColors.nowStart, HomeColors.nowEnd],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+    private var statusSuffix: String {
+        switch status {
+        case .done: return ", completed"
+        case .current: return ", in progress now"
+        case .upcoming(let isNext): return isNext ? ", up next" : ""
+        }
     }
 }
 
