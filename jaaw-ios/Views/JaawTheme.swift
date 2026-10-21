@@ -174,6 +174,22 @@ struct JaawBackground: View {
         fadeEndOpacity: 0.9
     )
 
+    /// Profile: the glow sits behind the identity card.
+    static let profile = Configuration(
+        orbOffsets: [
+            CGPoint(x: -20, y: -225),  // o3
+            CGPoint(x: -140, y: -125), // o1
+            CGPoint(x: -1, y: -30),    // o2 (trailing-anchored, resolved below)
+        ],
+        highlights: [
+            (UnitPoint(x: 0.72, y: 0.10), 250, 0.27),
+            (UnitPoint(x: 0.15, y: 0.25), 180, 0.12),
+        ],
+        fadeHeight: 460,
+        fadeMidOpacity: 0.62,
+        fadeEndOpacity: 0.9
+    )
+
     var configuration: Configuration
     var drift: Bool
     var reduceMotion: Bool
@@ -296,8 +312,8 @@ struct JaawTabBackdrop: View {
     var drift: Bool
     var reduceMotion: Bool
     /// The tab this backdrop belongs to — its clip only plays while that tab
-    /// is the visible one.
-    var tab: MainTab
+    /// is the visible one. `nil` (a pushed page) always plays.
+    var tab: MainTab?
 
     var body: some View {
         ZStack {
@@ -309,7 +325,7 @@ struct JaawTabBackdrop: View {
             JaawVideoBackdrop(
                 resource: JaawEntryVideo.landing,
                 reduceMotion: reduceMotion,
-                isActive: TabActivity.shared.isActive(tab)
+                isActive: tab.map { TabActivity.shared.isActive($0) } ?? true
             )
             // The clip's bright cloud band would swallow white type sitting
             // behind the glass panels, so the tabs run a deeper scrim than the
@@ -361,6 +377,18 @@ struct JaawCTAStyle: ButtonStyle {
                 y: configuration.isPressed ? 6 : 14
             )
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: configuration.isPressed)
+    }
+}
+
+/// A tap that sinks the control a touch — the small press feedback shared by
+/// the day cells, the month arrows and the card buttons.
+struct PressScaleStyle: ButtonStyle {
+    var scale: CGFloat = 0.9
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? scale : 1)
+            .animation(.spring(response: 0.28, dampingFraction: 0.7), value: configuration.isPressed)
     }
 }
 

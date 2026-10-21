@@ -15,19 +15,24 @@ final class TabActivity {
     static let shared = TabActivity()
 
     var activeTab: MainTab = .home
+    /// True while a page pushed over the tabs (the profile) is on screen.
+    var isDetailPresented = false
 
     func isActive(_ tab: MainTab) -> Bool {
-        activeTab == tab
+        activeTab == tab && !isDetailPresented
     }
 }
 
 struct MainTabs: View {
+    /// Opens the profile page, pushed onto the app's navigation stack.
+    var onOpenProfile: () -> Void = { }
+
     @State private var selection: MainTab = .home
 
     var body: some View {
         TabView(selection: $selection) {
             Tab("Home", systemImage: "house.fill", value: .home) {
-                HomeView()
+                HomeView(onOpenProfile: onOpenProfile)
             }
             Tab("Attendance", systemImage: "checkmark.circle.fill", value: .attendance) {
                 AttendanceView()

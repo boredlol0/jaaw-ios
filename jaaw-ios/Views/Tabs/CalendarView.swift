@@ -728,18 +728,6 @@ struct CalendarView: View {
 
 // MARK: - Button style
 
-/// A tap that sinks the control a touch — the small press feedback shared by
-/// the day cells, the month arrows and the timetable button.
-private struct PressScaleStyle: ButtonStyle {
-    var scale: CGFloat = 0.9
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? scale : 1)
-            .animation(.spring(response: 0.28, dampingFraction: 0.7), value: configuration.isPressed)
-    }
-}
-
 #Preview("Calendar") {
     CalendarView()
 }

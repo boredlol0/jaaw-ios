@@ -165,6 +165,8 @@ struct SessionPayload: Codable, Hashable {
 
 struct LoginResponse: Codable {
     var success: Bool = false
+    /// The server's explanation when `success` is false.
+    var message: String?
     var profile: UserProfile = UserProfile()
     var attendance: [AttendanceRecord] = []
     var marks: [MarkRecord] = []

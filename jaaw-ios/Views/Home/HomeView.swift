@@ -5,6 +5,9 @@ import SwiftUI
 /// stepping down where the mockup's edit button once sat — rolls to the foot of
 /// the screen and holds today's timetable.
 struct HomeView: View {
+    /// Opens the profile page.
+    var onOpenProfile: () -> Void = { }
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var session = SessionStore.shared
     @State private var viewModel = HomeViewModel()
@@ -61,7 +64,7 @@ struct HomeView: View {
     }
 
     /// Greeting takes the spot the mockup's back chevron used to hold; the
-    /// profile menu takes the notification bell's.
+    /// profile avatar takes the notification bell's.
     private var greetingRow: some View {
         HStack(alignment: .center, spacing: 12) {
             Text(greetingLine)
@@ -70,24 +73,15 @@ struct HomeView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
             Spacer(minLength: 0)
-            profileMenu
+            profileButton
         }
         .accessibilityElement(children: .contain)
     }
 
-    private var profileMenu: some View {
-        Menu {
-            if !session.profile.name.isEmpty {
-                Section {
-                    Text(session.profile.name)
-                    if !session.profile.registrationNumber.isEmpty {
-                        Text(session.profile.registrationNumber)
-                    }
-                }
-            }
-            Button("Logout", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {
-                session.logout()
-            }
+    /// Opens the profile page.
+    private var profileButton: some View {
+        Button {
+            onOpenProfile()
         } label: {
             Text(viewModel.dashboard.userInitial)
                 .font(.system(size: 16, weight: .heavy))
@@ -96,7 +90,8 @@ struct HomeView: View {
                 .background(.white, in: Circle())
                 .shadow(color: Color(red: 0, green: 0, blue: 70 / 255, opacity: 0.5), radius: 14, y: 7)
         }
-        .accessibilityLabel("Profile menu")
+        .buttonStyle(PressScaleStyle(scale: 0.92))
+        .accessibilityLabel("Profile")
     }
 
     /// The cake illustration's slot: the day order number, big and trailing.

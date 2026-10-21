@@ -3,6 +3,7 @@ import SwiftUI
 enum AppRoute: Hashable {
     case login
     case home
+    case profile
 }
 
 struct ContentView: View {
@@ -18,7 +19,7 @@ struct ContentView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(JaawColors.deep)
                 } else if session.isLoggedIn {
-                    MainTabs()
+                    MainTabs(onOpenProfile: openProfile)
                 } else {
                     LandingView {
                         path.append(.login)
@@ -30,14 +31,16 @@ struct ContentView: View {
                 case .login:
                     LoginView(
                         onBack: { path.removeLast() },
-                        onAuthenticated: {	
+                        onAuthenticated: { 
                             // Auth flow complete: reset the stack so back
                             // never returns to the login form.
                             path = []
                         }
                     )
                 case .home:
-                    MainTabs()
+                    MainTabs(onOpenProfile: openProfile)
+                case .profile:
+                    ProfileView()
                 }
             }
         }
@@ -48,6 +51,10 @@ struct ContentView: View {
         .onChange(of: session.isLoggedIn) { _, loggedIn in
             if !loggedIn { path = [] }
         }
+    }
+
+    private func openProfile() {
+        path.append(.profile)
     }
 }
 

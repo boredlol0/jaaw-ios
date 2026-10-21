@@ -45,7 +45,8 @@ final class LoginViewModel {
                 password: trimmedPassword
             )
             guard response.success else {
-                errorMessage = "Login failed. Please try again."
+                errorMessage = Self.message(from: response.message)
+                    ?? "Login failed. Please try again."
                 return false
             }
             SessionStore.shared.save(loginResponse: response, username: username, password: trimmedPassword)
@@ -57,5 +58,11 @@ final class LoginViewModel {
             errorMessage = "Network error. Please check your connection."
             return false
         }
+    }
+
+    /// The server's own wording, when it sent one.
+    private static func message(from raw: String?) -> String? {
+        let text = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return text.isEmpty ? nil : text
     }
 }

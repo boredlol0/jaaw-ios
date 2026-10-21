@@ -4,14 +4,14 @@ import Foundation
 // The base URL is fixed; the app always talks to production.
 
 enum JaawAPIError: LocalizedError, Equatable {
-    case invalidCredentials
+    case invalidCredentials(String)
     case serverUnreachable(String)
     case requestFailed(String)
 
     var errorDescription: String? {
         switch self {
-        case .invalidCredentials:
-            return "Invalid NetID or password."
+        case .invalidCredentials(let detail):
+            return detail.isEmpty ? "Invalid NetID or password." : detail
         case .serverUnreachable(let detail):
             return detail.isEmpty ? "Academia servers unreachable. Please check your connection." : detail
         case .requestFailed(let detail):
@@ -28,8 +28,20 @@ enum JaawAPI {
         var password: String
     }
 
+    /// The error body the API returns: a human-readable `message`, with
+    /// `detail` as the older field some endpoints still send.
     private struct ErrorBody: Decodable {
+        var message: String?
         var detail: String?
+
+        /// The most useful thing the server said, if it said anything.
+        var bestMessage: String? {
+            for candidate in [message, detail] {
+                let text = candidate?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                if !text.isEmpty { return text }
+            }
+            return nil
+        }
     }
 
     /// POST /login with `{ username, password }`. Returns the full dashboard payload.
@@ -53,15 +65,18 @@ enum JaawAPI {
         }
 
         guard (200...299).contains(http.statusCode) else {
-            let detail = (try? JSONDecoder().decode(ErrorBody.self, from: data))?.detail
-                ?? "HTTP \(http.statusCode)"
+            let body = try? JSONDecoder().decode(ErrorBody.self, from: data)
             switch http.statusCode {
             case 400, 401, 422:
-                throw JaawAPIError.invalidCredentials
+                // The server's own wording wins; the generic line is the
+                // fallback when it says nothing.
+                throw JaawAPIError.invalidCredentials(body?.bestMessage ?? "")
             case 502, 503, 504:
-                throw JaawAPIError.serverUnreachable(detail)
+                throw JaawAPIError.serverUnreachable(body?.bestMessage ?? "")
             default:
-                throw JaawAPIError.requestFailed(detail)
+                throw JaawAPIError.requestFailed(
+                    body?.bestMessage ?? "HTTP \(http.statusCode)"
+                )
             }
         }
 
